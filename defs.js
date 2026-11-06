@@ -20,6 +20,20 @@
     comb: fn, hint: hint || label + ' 门'
   });
 
+  // Three-input variants are kept as separate components so the symbol stays
+  // a standard gate instead of a box. They are extensions of the 2-input
+  // lessons and are not counted as separate curriculum coverage items.
+  const gate3 = (key, label, en, fn, hint) => ({
+    key, label, en, family: 'logic', w: 124, minH: 128,
+    inputs: [
+      { id: 'A', label: 'A', width: 1 },
+      { id: 'B', label: 'B', width: 1 },
+      { id: 'C', label: 'C', width: 1 }
+    ],
+    outputs: [{ id: 'Y', label: 'Y', width: 1 }],
+    comb: fn, hint: hint || label + ' 门'
+  });
+
   const DEFS = {
     IN: {
       key: 'IN', label: '开关', en: 'INPUT', family: 'source', w: 138, minH: 86,
@@ -61,6 +75,20 @@
     NOR: gate('NOR', '或非门', 'NOR', (i) => ({ Y: (i.A | i.B) ? 0 : 1 })),
     XOR: gate('XOR', '异或门', 'XOR', (i) => ({ Y: i.A !== i.B ? 1 : 0 })),
     XNOR: gate('XNOR', '同或门', 'XNOR', (i) => ({ Y: i.A === i.B ? 1 : 0 })),
+
+    AND3: gate3('AND3', '三输入与门', 'AND3', (i) => ({ Y: (i.A & i.B & i.C) ? 1 : 0 }),
+      '三个输入都为 1，输出才为 1；可用于 x·y·z′ 这类三变量乘积项'),
+    OR3: gate3('OR3', '三输入或门', 'OR3', (i) => ({ Y: (i.A | i.B | i.C) ? 1 : 0 }),
+      '三个输入有一个为 1，输出就为 1'),
+    NAND3: gate3('NAND3', '三输入与非门', 'NAND3', (i) => ({ Y: (i.A & i.B & i.C) ? 0 : 1 }),
+      '三输入与门后再取反'),
+    NOR3: gate3('NOR3', '三输入或非门', 'NOR3', (i) => ({ Y: (i.A | i.B | i.C) ? 0 : 1 }),
+      '三输入或门后再取反'),
+    XOR3: gate3('XOR3', '三输入异或门', 'XOR3', (i) => ({ Y: (i.A ^ i.B ^ i.C) ? 1 : 0 }),
+      '三个输入中 1 的个数为奇数时输出 1'),
+    XNOR3: gate3('XNOR3', '三输入同或门', 'XNOR3', (i) => ({ Y: (i.A ^ i.B ^ i.C) ? 0 : 1 }),
+      '三个输入中 1 的个数为偶数时输出 1'),
+
     SPLIT: {
       key: 'SPLIT', label: '分线器', en: 'SPLIT', family: 'data', w: 148, minH: 140,
       inputs: [{ id: 'D', label: 'D', width: 4 }],
@@ -163,6 +191,7 @@
   const PALETTE = [
     { section: '信号源', keys: ['IN', 'NIB', 'CONST', 'CLK'] },
     { section: '逻辑门', keys: ['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR'] },
+    { section: '三输入门', keys: ['AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3', 'XNOR3'] },
     { section: '数据通路', keys: ['SPLIT', 'MERGE', 'MUX2', 'ADD4'] },
     { section: '时序', keys: ['DFF', 'REG4'] },
     { section: '输出', keys: ['OUT', 'HEX'] }

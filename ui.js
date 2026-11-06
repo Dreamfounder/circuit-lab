@@ -282,17 +282,21 @@
   }
 
   function gatePaletteIcon(type) {
+    const base = type.replace(/3$/, '');
     const bubble = (cx) => '<circle cx="' + cx + '" cy="14" r="2.4"/>';
     let shape = '';
-    if (type === 'AND' || type === 'NAND') {
+    if (base === 'AND' || base === 'NAND') {
       shape = '<path d="M5 5h14a9 9 0 0 1 0 18H5Z"/>';
-      if (type === 'NAND') shape += bubble(31);
-    } else if (type === 'OR' || type === 'NOR' || type === 'XOR' || type === 'XNOR') {
+      if (base === 'NAND') shape += bubble(31);
+    } else if (base === 'OR' || base === 'NOR' || base === 'XOR' || base === 'XNOR') {
       shape = '<path d="M4 4c11 0 20 4 28 10-8 6-17 10-28 10 6-6 6-14 0-20Z"/>';
-      if (type === 'XOR' || type === 'XNOR') shape += '<path d="M1 4c6 6 6 14 0 20"/>';
-      if (type === 'NOR' || type === 'XNOR') shape += bubble(35);
-    } else if (type === 'NOT') {
+      if (base === 'XOR' || base === 'XNOR') shape += '<path d="M1 4c6 6 6 14 0 20"/>';
+      if (base === 'NOR' || base === 'XNOR') shape += bubble(35);
+    } else if (base === 'NOT') {
       shape = '<path d="M7 4 27 14 7 24Z"/>' + bubble(30);
+    }
+    if (type.endsWith('3')) {
+      shape += '<path d="M1 7h4M1 14h4M1 21h4"/>';
     }
     return '<svg viewBox="0 0 40 28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + shape + '</svg>';
   }
@@ -334,7 +338,11 @@
     if (S.mode !== 'level') return true;
     const lv = CL.levelById(S.levelId);
     if (!lv) return true;
-    return Array.isArray(lv.allowed) && lv.allowed.includes(key);
+    if (!Array.isArray(lv.allowed)) return false;
+    if (lv.allowed.includes(key)) return true;
+    // Three-input gates are variants of the base gate, so a level that allows
+    // AND also allows AND3 (same for OR / NAND / NOR / XOR / XNOR).
+    return key.endsWith('3') && lv.allowed.includes(key.slice(0, -1));
   }
 
   function updatePaletteLocks() {
@@ -814,17 +822,18 @@
   /* Standard schematic gate symbols, drawn as the node itself. */
   function drawGateNode(node, t, r, selected, hot, fam) {
     const type = node.type;
+    const baseType = type.replace(/3$/, '');
     const def = DEFS[type];
     const s = r.s;
     const x = r.x, y = r.y, w = r.w, h = r.h;
-    const isNot = type === 'NOT';
-    const isOrFamily = type === 'OR' || type === 'NOR' || type === 'XOR' || type === 'XNOR';
-    const hasBubble = type === 'NAND' || type === 'NOR' || type === 'XNOR' || type === 'NOT';
+    const isNot = baseType === 'NOT';
+    const isOrFamily = baseType === 'OR' || baseType === 'NOR' || baseType === 'XOR' || baseType === 'XNOR';
+    const hasBubble = baseType === 'NAND' || baseType === 'NOR' || baseType === 'XNOR' || baseType === 'NOT';
     const outputY = y + (CL.portY(node, 0, def.outputs.length) - node.y) * s;
     const inputYs = def.inputs.map((p, i) =>
       y + (CL.portY(node, i, def.inputs.length) - node.y) * s
     );
-    const bodyH = (isNot ? 60 : 70) * s;
+    const bodyH = (isNot ? 60 : (def.inputs.length >= 3 ? 92 : 70)) * s;
     const top = outputY - bodyH / 2;
     const bottom = outputY + bodyH / 2;
     const left = x + (isNot ? 26 : 22) * s;
@@ -891,7 +900,7 @@
     ctx.stroke();
 
     // XOR/XNOR get the second, separate input curve.
-    if (type === 'XOR' || type === 'XNOR') {
+    if (baseType === 'XOR' || baseType === 'XNOR') {
       ctx.beginPath();
       ctx.moveTo(left - 7 * s, top + 1.5 * s);
       ctx.quadraticCurveTo(left + 3 * s, outputY, left - 7 * s, bottom - 1.5 * s);
@@ -2334,7 +2343,9 @@
   }
 
   function componentCoverage() {
-    const all = Object.keys(DEFS);
+    // Three-input gates are extensions of the base gate lessons, not separate
+    // curriculum components; keep the 19-core-component coverage count.
+    const all = Object.keys(DEFS).filter((t) => !t.endsWith('3'));
     const map = {};
     for (const lv of CL.LEVELS) {
       const types = new Set();
@@ -2368,7 +2379,7 @@
       }
     }
     html += '</tbody></table></div>';
-    html += '<p class="table-note">这一版共 ' + cov.all.length + ' 个元件、' + CL.LEVELS.length + ' 个关卡，所有元件都至少有一个关卡会实际使用它。</p>' +
+    html += '<p class="table-note">这一版共 ' + cov.all.length + ' 个核心元件、' + CL.LEVELS.length + ' 个关卡，所有核心元件都至少有一个关卡会实际使用它。三输入门（AND3 / OR3 / NAND3 / NOR3 / XOR3 / XNOR3）是基础门的扩展，可在自由沙盒和对应关卡中直接使用。</p>' +
       '<div class="modal-actions"><button class="btn primary" data-close-modal>知道了</button></div>';
     openModal(html);
     bindModalBasics();
@@ -2452,9 +2463,10 @@
       '<li><b>真值表</b>会枚举 1 位输入的所有组合，点击一行可应用这组输入。</li>' +
       '<li><b>验证</b>会运行关卡的标准测试向量，逐项检查你的电路。</li>' +
       '<li>每关第一次进入会打开<b>介绍/教学</b>；目标卡的“介绍”、关卡列表每张卡的“介绍”、菜单里的“重看本关介绍”都能再次打开。</li>' +
-      '<li>菜单 → <b>元件覆盖清单</b> 可以查看 19 个元件分别在哪一关教学。</li></ul></div>' +
+      '<li>菜单 → <b>元件覆盖清单</b> 可以查看 19 个核心元件分别在哪一关教学；三输入门是基础门的扩展变体。</li></ul></div>' +
       '<div class="help-section"><h3>元件速查</h3><ul>' +
       '<li><code>4b</code> 是 4 位输入，点底部四个小格切换 8/4/2/1。</li>' +
+      '<li><code>AND3 / OR3 / NAND3 / NOR3 / XOR3 / XNOR3</code> 是三输入门，A/B/C 三条输入线；用于 x·y·z′ 这类三变量式子。</li>' +
       '<li><code>SPLIT / MERGE</code> 拆分或合并 4 位总线。</li>' +
       '<li><code>DFF</code> 在时钟上升沿锁存 D；暂停后按单步观察。</li>' +
       '<li>锁定元件是关卡给出的输入/输出，不能删除，但可以移动。</li></ul></div>' +
@@ -2473,7 +2485,7 @@
     let html = '<div class="eyebrow">CIRCUIT LAB · MENU</div><h2 style="margin:5px 0 0;font-size:22px">' + (lv ? '关卡 ' + lv.num + ' · ' + esc(lv.title) : '自由沙盒') + '</h2>' +
       '<p class="table-note" style="margin-top:4px">所有改动都会自动保存到本机。</p><div class="menu-list">' +
       '<button class="menu-item" data-menu="levels"><svg><use href="#i-chapter"/></svg><div><b>关卡选择</b><span>' + (lv ? '切换关卡或回到自由沙盒' : '从基础逻辑门到 4 位加法器') + '</span></div></button>' +
-      '<button class="menu-item" data-menu="coverage"><svg><use href="#i-grid"/></svg><div><b>元件覆盖清单</b><span>19 个元件与对应教学关卡</span></div></button>' +
+      '<button class="menu-item" data-menu="coverage"><svg><use href="#i-grid"/></svg><div><b>元件覆盖清单</b><span>19 个核心元件与对应教学关卡</span></div></button>' +
       '<button class="menu-item" data-menu="help"><svg><use href="#i-help"/></svg><div><b>玩法说明</b><span>连线、位宽、真值表、快捷键</span></div></button>';
     if (lv) {
       html += '<button class="menu-item" data-menu="intro"><svg><use href="#i-help"/></svg><div><b>重看本关介绍</b><span>生活类比、公式、真值表、接线步骤</span></div></button>' +
@@ -2483,7 +2495,7 @@
       html += '<button class="menu-item" data-menu="clear"><svg><use href="#i-trash"/></svg><div><b>清空画布</b><span>删除所有元件和连线</span></div></button>';
     }
     html += '<button class="menu-item danger" data-menu="reset"><svg><use href="#i-undo"/></svg><div><b>重置关卡进度</b><span>清除所有通关记录</span></div></button>' +
-      '<button class="menu-item" data-menu="about"><svg><use href="#i-bolt"/></svg><div><b>关于 Circuit Lab</b><span>离线数字电路实验场 · v1.4</span></div></button>' +
+      '<button class="menu-item" data-menu="about"><svg><use href="#i-bolt"/></svg><div><b>关于 Circuit Lab</b><span>离线数字电路实验场 · v1.5</span></div></button>' +
       '</div><div class="modal-actions"><button class="btn" data-close-modal>关闭</button></div>';
     openModal(html);
     bindModalBasics();
@@ -2544,7 +2556,7 @@
   function openAbout() {
     openModal('<div class="hero" style="padding-top:0"><div class="pass-ring" style="width:56px;height:56px"><svg><use href="#i-bolt"/></svg></div>' +
       '<h2 style="font-size:22px">Circuit Lab</h2><p>逻辑电路实验室 · 离线版</p></div>' +
-      '<div style="margin-top:12px"><div class="about-line"><span>版本</span><b>1.4 · 19 关介绍随时看</b></div>' +
+      '<div style="margin-top:12px"><div class="about-line"><span>版本</span><b>1.5 · 三输入门与 19 关教学</b></div>' +
       '<div class="about-line"><span>运行方式</span><b>完全离线 · 本机存储</b></div>' +
       '<div class="about-line"><span>适合</span><b>数字逻辑 · 计算机组成原理</b></div>' +
       '<div class="about-line"><span>数据</span><b>不上传、不联网</b></div></div>' +

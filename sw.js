@@ -1,5 +1,5 @@
 /* Circuit Lab PWA cache. Bump CACHE when the game assets change. */
-const CACHE = 'circuitlab-pwa-1.4';
+const CACHE = 'circuitlab-pwa-1.5';
 const ASSETS = [
   './',
   './index.html',
