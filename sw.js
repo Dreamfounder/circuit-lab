@@ -9,10 +9,10 @@ const ASSETS = [
   './engine.js',
   './ui.js',
   './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-1024.png',
-  './icons/apple-touch-icon.png'
+  './icon-192.png',
+  './icon-512.png',
+  './icon-1024.png',
+  './apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
